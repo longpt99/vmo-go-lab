@@ -1,4 +1,4 @@
-package main
+package module2
 
 import (
 	"fmt"
@@ -48,12 +48,10 @@ func lesson2() {
 
 	for _, n := range arrNum {
 		isValid := isPrimeNumber((n))
-
 		if isValid && n <= num {
 			fmt.Printf("%d ", n)
 		}
 	}
-
 }
 
 func isPrimeNumber(n int) bool {

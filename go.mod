@@ -1,4 +1,4 @@
-module lession2
+module vmo-go-lab
 
 go 1.20
 
