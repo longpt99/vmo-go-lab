@@ -1,38 +1,64 @@
 package module4
 
 import (
-	"log"
-	"sync"
+	"fmt"
 	"time"
 )
 
-func Lesson_2() {
-	var wg sync.WaitGroup
-	var msg = map[string]int{
-		"Red":    15,
-		"Green":  30,
-		"Yellow": 3,
-	}
+type LightColor int64
 
-	for key, val := range msg {
-		wg.Add(1)
-		go trafficLight(key, val, &wg)
-	}
-	wg.Wait()
+const (
+	Red LightColor = iota
+	Green
+	Yellow
+)
 
+func (c LightColor) String() string {
+	switch c {
+	case Red:
+		return "red"
+	case Green:
+		return "green"
+	case Yellow:
+		return "yellow"
+	}
+	return "unknown"
 }
 
-func trafficLight(msg string, second int, wg *sync.WaitGroup) {
-	defer wg.Done()
-	time.Sleep(time.Duration(second) * time.Second)
-	var times = 0
-	for {
-		log.Printf("Traffic Light Color: %s\n", msg)
-		time.Sleep(1 * time.Second)
-		times++
+func Lesson_2() {
+	var state = make(chan string)
+	// var timer uint8 = 0
+	var msg = map[string]int{
+		"red":    15,
+		"green":  30,
+		"yellow": 3,
+	}
 
-		if times == second {
-			break
+	var light string
+	var timer int
+
+	go func() {
+		for {
+			state <- "red"
+			time.Sleep(time.Second * 15)
+			state <- "green"
+			time.Sleep(time.Second * 30)
+			state <- "yellow"
+			time.Sleep(time.Second * 3)
+		}
+	}()
+
+	for {
+		light = <-state
+		timer = msg[light]
+		for {
+			time.Sleep(time.Second * 1)
+			fmt.Printf("Light: %s - Time: %d\n", light, timer)
+			timer--
+
+			if timer == 0 {
+				break
+			}
 		}
 	}
 
