@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package weather;
+
+option go_package="weather/weatherpb";
+
+service WeatherService {
+  rpc GetTemp(GetTempRequest) returns (GetTempResponse) {}
+}
+
+message GetTempRequest {
+  double lat = 1;
+  double lon = 2;
+}
+
+message GetTempResponse {
+  double temp = 1;
+}

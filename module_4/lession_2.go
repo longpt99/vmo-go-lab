@@ -27,7 +27,6 @@ func (c LightColor) String() string {
 
 func Lesson_2() {
 	var state = make(chan string)
-	// var timer uint8 = 0
 	var msg = map[string]int{
 		"red":    15,
 		"green":  30,
