@@ -5,7 +5,7 @@ build:
 	go build -o bin/main main.go
 
 run:
-	./bin/main --backends=https://grafana.com:443,http://info.cern.ch:80   
+	./bin/main 
 
 hello:
 	echo "Hello"
