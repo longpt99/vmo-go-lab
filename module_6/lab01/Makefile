@@ -1,14 +1,28 @@
+# ==================================================================================== #
+# HELPERS
+# ==================================================================================== #
+
+## help: print this help message
+.PHONY: help
+help:
+	@echo 'Usage:'
+	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
+
+# ==================================================================================== #
+# QUALITY CONTROL
+# ==================================================================================== #
 clear:
 	rm -rf bin
 
+## build: build the application
+.PHONY: build
 build:
 	go build -o bin/main main.go
 
+## run: run the application after built
+.PHONY: run
 run:
 	./bin/main 
-
-hello:
-	echo "Hello"
 
 compile:
 	echo "Compiling for every OS and Platform"
@@ -16,4 +30,6 @@ compile:
 	GOOS=linux GOARCH=arm64 go build -o bin/main-linux-arm64 main.go
 	GOOS=freebsd GOARCH=386 go build -o bin/main-freebsd-386 main.go
 
-all: clear build run
+## start/dev: run the application
+.PHONY: start/dev
+start/dev: clear build run
