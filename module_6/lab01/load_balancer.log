@@ -32,3 +32,13 @@
 2023/08/03 20:15:37 [GET] localhost:3000 / - 253ms
 2023/08/03 20:17:33 [GET] localhost:3000 / - 897ms
 2023/08/03 20:17:35 [GET] localhost:3000 / - 379ms
+2023/08/08 14:03:21 [GET] localhost:8080 / - 1213ms
+2023/08/08 14:03:26 [GET] localhost:8080 / - 1344ms
+2023/08/08 14:03:30 [GET] localhost:8080 / - 3327ms
+2023/08/08 14:03:33 [GET] localhost:8080 / - 288ms
+2023/08/08 14:04:09 [GET] localhost:8080 / - 623ms
+2023/08/08 14:04:11 [GET] localhost:8080 / - 433ms
+2023/08/08 14:22:12 [GET] localhost:8080 / - 1211ms
+2023/08/08 14:22:15 [GET] localhost:8080 / - 362ms
+2023/08/08 14:36:36 [GET] localhost:8080 / - 647ms
+2023/08/08 14:36:38 [GET] localhost:8080 / - 413ms

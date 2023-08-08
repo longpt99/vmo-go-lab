@@ -2,32 +2,18 @@ package configs
 
 import (
 	"fmt"
+	"load-balancer/commons"
 
 	"github.com/spf13/viper"
 )
 
-type Config struct {
-	Servers    []string `mapstructure:"servers"`
-	RateLimit  int      `mapstructure:"rate_limit"`
-	LogEnabled bool     `mapstructure:"log_enabled"`
-	LogFile    string   `mapstructure:"log_file"`
-	Database   struct {
-		Redis struct {
-			Db       int    `mapstructure:"db"`
-			Host     string `mapstructure:"host"`
-			Port     int    `mapstructure:"port"`
-			Password string `mapstructure:"password"`
-		} `mapstructure:"redis"`
-	} `mapstructure:"database"`
-}
+var config commons.Config
 
-var config Config
-
-func GetConfig() Config {
+func GetConfig() commons.Config {
 	return config
 }
 
-func LoadConfig() (*Config, error) {
+func LoadConfig() (*commons.Config, error) {
 	viper.SetConfigFile("system.yaml")
 	viper.AddConfigPath(".")
 

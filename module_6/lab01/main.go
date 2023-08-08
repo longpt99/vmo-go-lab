@@ -1,21 +1,16 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"flag"
 	"fmt"
 	"load-balancer/configs"
-	"load-balancer/db"
+	"load-balancer/configs/database"
+	"load-balancer/helpers"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"sync"
 	"time"
-
-	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -30,10 +25,9 @@ type Backend struct {
 }
 
 type ServerPool struct {
-	backends    []*Backend
-	current     uint64
-	mutex       sync.RWMutex
-	redisClient *redis.Client
+	backends []*Backend
+	current  uint64
+	mutex    sync.RWMutex
 }
 
 // AddBackend to the server pool
@@ -46,7 +40,6 @@ func (s *ServerPool) AddBackend(backend *Backend) {
 func (s *ServerPool) GetNextBackend() *Backend {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
 	s.current++
 	next := s.current % uint64(len(s.backends))
 	return s.backends[next]
@@ -54,34 +47,27 @@ func (s *ServerPool) GetNextBackend() *Backend {
 
 func main() {
 	c, err := configs.LoadConfig()
-	db.InitializeRedis(c)
+	database.InitializeRedis(c)
 
 	if err != nil {
 		log.Printf("Load env error: %v\n", err)
 		return
 	}
 
-	var port int
-	flag.IntVar(&port, "port", 3000, "Port to serve")
-	flag.Parse()
-
 	if len(c.Servers) == 0 {
 		log.Fatal("Please provide one or more backends to load balance")
 	}
 
 	if c.LogEnabled {
-		logOutput, err := setupLogFile(c.LogFile)
+		logOutput, err := helpers.LogFile(c.LogFile)
 		if err != nil {
 			log.Fatalf("Failed to setup log file: %v", err)
 		}
 		logger = log.New(logOutput, "", log.LstdFlags)
 	}
 
-	fmt.Println(c.Servers)
-
-	serverPool = ServerPool{
-		redisClient: db.RedisClient,
-	}
+	serverPool = ServerPool{}
+	lb := configs.NewLoadBalancerServer(c)
 
 	for _, s := range c.Servers {
 		serverUrl, err := url.Parse(s)
@@ -99,74 +85,37 @@ func main() {
 	}
 
 	server := http.Server{
-		Addr: fmt.Sprintf(":%d", port),
+		Addr: fmt.Sprintf(":%d", c.Port),
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			backend := serverPool.GetNextBackend()
 
-			if backend != nil {
-				if c.RateLimit > 0 {
-					serverPool.mutex.Lock()
-					defer serverPool.mutex.Unlock()
-
-					ip := r.RemoteAddr
-					key := string(fmt.Sprintf("caches:ips:%s", ip))
-					value, err := serverPool.redisClient.Get(context.Background(), key).Bytes()
-
-					var data struct {
-						Counters  int    `json:"counters"`
-						TimeLimit string `json:"time_limit"`
-					}
-
-					json.Unmarshal(value, &data)
-
-					if err != nil || data.TimeLimit < time.Now().String() {
-						data.Counters = 0
-						data.TimeLimit = time.Now().Add(time.Second * 60).String()
-					}
-					data.Counters++
-
-					if data.Counters > c.RateLimit && data.TimeLimit > time.Now().String() {
-						http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
-						return
-					} else {
-						jsonData, err := json.Marshal(&data)
-						if err != nil {
-							panic(err)
-						}
-
-						err = serverPool.redisClient.SetEx(context.Background(), key, jsonData, time.Minute*10).Err()
-
-						if err != nil {
-							panic(err)
-						}
-					}
-				}
-
-				start := time.Now()
-				backend.ReverseProxy.ServeHTTP(w, r)
-				elapsed := time.Since(start)
-
-				if logger != nil {
-					logger.Printf("[%s] %s %s - %dms", r.Method, r.Host, r.URL.Path, elapsed.Milliseconds())
-				}
-
+			if backend == nil {
+				http.Error(w, "Service not available", http.StatusServiceUnavailable)
 				return
 			}
 
-			http.Error(w, "Service not available", http.StatusServiceUnavailable)
+			ip := r.RemoteAddr
+			serverPool.mutex.Lock()
+			err := lb.HandleRequest(ip)
+			serverPool.mutex.Unlock()
+
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusTooManyRequests)
+				return
+			}
+
+			start := time.Now()
+			backend.ReverseProxy.ServeHTTP(w, r)
+			elapsed := time.Since(start)
+
+			if logger != nil {
+				logger.Printf("[%s] %s %s - %dms", r.Method, r.Host, r.URL.Path, elapsed.Milliseconds())
+			}
 		}),
 	}
 
-	log.Printf("Load Balancer started at :%d\n", port)
+	log.Printf("Load Balancer started at :%d\n", c.Port)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func setupLogFile(logFile string) (*os.File, error) {
-	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		return nil, err
-	}
-	return file, nil
 }
