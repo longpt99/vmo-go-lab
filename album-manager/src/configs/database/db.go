@@ -39,5 +39,7 @@ func InitDatabase(ctx context.Context) (*PostgresConfig, error) {
 		return nil, err
 	}
 
+	db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+
 	return &PostgresConfig{db, ctx, sqlDB}, nil
 }

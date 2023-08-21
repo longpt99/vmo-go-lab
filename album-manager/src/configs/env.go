@@ -13,11 +13,11 @@ var Env models.Config
 func InitConfig() error {
 	pwd, _ := os.Getwd()
 
-	viper.SetConfigFile(fmt.Sprintf("%s/configs/env/dev.env", pwd))
+	viper.SetConfigFile(fmt.Sprintf("%s/src/configs/env/dev.env", pwd))
 	viper.AutomaticEnv()
 
-	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil {             // Handle errors reading the config file
+	err := viper.ReadInConfig()
+	if err != nil {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 

@@ -3,15 +3,10 @@
 package utils
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-)
-
-var (
-	encodedErrResp []byte = json.RawMessage(`{"message":"Something has gone wrong"}`)
 )
 
 // ClientReporter provides information about an error such that client and
@@ -60,7 +55,6 @@ func Write(c *gin.Context, payload interface{}, status int) {
 // handleInternalServerError writes the given error to stderr and returns a
 // 500 response with a default message.
 func handleInternalServerError(c *gin.Context, e error) {
-	// log.AlarmWithContext(r.Context(), e)
 	log.Printf("Err: %v", e)
-	c.JSON(http.StatusInternalServerError, encodedErrResp)
+	c.JSON(http.StatusInternalServerError, gin.H{"message": "Something has gone wrong"})
 }

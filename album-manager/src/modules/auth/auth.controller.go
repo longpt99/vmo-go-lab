@@ -15,7 +15,7 @@ type Controller struct {
 	service *Service
 }
 
-func InitController(r *gin.Engine, userRepo user.Repository) *Controller {
+func InitController(r *gin.RouterGroup, userRepo user.Repository) *Controller {
 	h := &Controller{
 		&Service{
 			userRepo,
