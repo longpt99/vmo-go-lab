@@ -32,11 +32,12 @@ func main() {
 
 	// Load database
 	store, err := database.InitDatabase(ctx)
-	defer store.Close()
-
 	if err != nil {
-		log.Fatalf("InitDatabase error occurred. Err: %s", err)
+		log.Printf("InitDatabase error occurred. Err: %s", err)
+	} else {
+		store.InitializeFunction()
 	}
+	defer store.Close()
 
 	repo := repository.InitRepositories(store)
 	p := configs.Env.Port

@@ -18,6 +18,8 @@ func AuthMiddleware(c *gin.Context) {
 
 	if token == "" {
 		res.WriteError(c, errors.E(op, http.StatusUnauthorized))
+		c.Abort()
+
 		return
 	}
 
@@ -26,6 +28,8 @@ func AuthMiddleware(c *gin.Context) {
 
 	if err != nil {
 		res.WriteError(c, err)
+		c.Abort()
+
 		return
 	}
 

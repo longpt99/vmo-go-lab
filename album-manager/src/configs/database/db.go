@@ -39,7 +39,18 @@ func InitDatabase(ctx context.Context) (*PostgresConfig, error) {
 		return nil, err
 	}
 
-	db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
-
 	return &PostgresConfig{db, ctx, sqlDB}, nil
+}
+
+func (pgC *PostgresConfig) InitializeFunction() {
+	pgC.DB.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+
+	pgC.DB.Exec(`
+	DO $$ 
+	BEGIN
+		IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_status_enum') THEN
+			CREATE TYPE user_status_enum AS ENUM ('active', 'inactive');
+		END IF;
+	END $$;
+	`)
 }

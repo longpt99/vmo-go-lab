@@ -2,6 +2,7 @@ package repository
 
 import (
 	"album-manager/src/configs/database"
+	"album-manager/src/modules/album"
 	"album-manager/src/modules/photo"
 	"album-manager/src/modules/user"
 	"log"
@@ -14,6 +15,7 @@ type Config interface {
 type Repository struct {
 	UserRepo  user.Repository
 	PhotoRepo photo.Repository
+	AlbumRepo album.Repository
 }
 
 func InitRepositories(store *database.PostgresConfig) *Repository {
@@ -22,5 +24,6 @@ func InitRepositories(store *database.PostgresConfig) *Repository {
 	return &Repository{
 		UserRepo:  user.InitRepository(store),
 		PhotoRepo: photo.InitRepository(store),
+		AlbumRepo: album.InitRepository(store),
 	}
 }

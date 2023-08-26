@@ -1,9 +1,12 @@
 package auth
 
 import (
+	"album-manager/src/common/repository"
 	"album-manager/src/errors"
+	"album-manager/src/models"
 	"album-manager/src/modules/user"
 	"album-manager/src/utils"
+	"album-manager/src/utils/object"
 	t "album-manager/src/utils/token"
 	"net/http"
 	"reflect"
@@ -14,7 +17,7 @@ type Service struct {
 	userRepo user.Repository
 }
 
-func (s *Service) handleSignIn(body *user.LoginUserReq) (interface{}, error) {
+func (s *Service) handleSignIn(body *models.LoginUserReq) (interface{}, error) {
 	op := errors.Op("auth.service.handleSignIn")
 
 	var data struct {
@@ -22,11 +25,11 @@ func (s *Service) handleSignIn(body *user.LoginUserReq) (interface{}, error) {
 		Password string `json:"password"`
 	}
 
-	params := &user.QueryParams{
+	params := &repository.QueryParams{
 		TableName: "users",
 		Columns:   []string{"id", "password"},
-		Where:     "email ILIKE $1",
-		Args:      []interface{}{body.Email},
+		Where:     "email ILIKE ? OR username ILIKE ?",
+		Args:      []interface{}{body.Identifier, body.Identifier},
 	}
 
 	if err := s.userRepo.DetailByConditions(&data, params); err != nil {
@@ -45,17 +48,17 @@ func (s *Service) handleSignIn(body *user.LoginUserReq) (interface{}, error) {
 	return map[string]string{"access_token": t.SignToken(data.ID)}, nil
 }
 
-func (s *Service) handleSignUp(body *user.SignUpUserReq) (interface{}, error) {
+func (s *Service) handleSignUp(body *models.SignUpUserReq) (interface{}, error) {
 	op := errors.Op("auth.service.handleSignUp")
 
 	var data struct {
 		ID string `json:"id"`
 	}
 
-	params := &user.QueryParams{
+	params := &repository.QueryParams{
 		TableName: "users",
 		Columns:   []string{"id"},
-		Where:     "email ILIKE $1",
+		Where:     "email ILIKE ?",
 		Args:      []interface{}{body.Email},
 	}
 
@@ -67,14 +70,100 @@ func (s *Service) handleSignUp(body *user.SignUpUserReq) (interface{}, error) {
 		return nil, errors.E(op, http.StatusBadRequest, "account have exists")
 	}
 
-	body.Password = utils.HashPassword(body.Password)
+	createUserParams := &models.User{}
 
-	id, err := s.userRepo.InsertOne(*body)
+	err := object.MergeStructIntoModel(createUserParams, body)
 	if err != nil {
 		return nil, err
 	}
 
+	createUserParams.Password = utils.HashPassword(body.Password)
+
+	id, err := s.userRepo.InsertOne(createUserParams)
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO: Send link to active account
+	// notiService := notification.Service{
+	// 	notification.CreateNotifier("email"),
+	// }
+	// notiService.SendNotification("Hello sờ lyly!", []string{
+	// 	body.Email,
+	// })
+
 	return map[string]interface{}{
 		"id": id,
+	}, nil
+}
+
+func (s *Service) handleResetPassword(body *models.ResetPasswordReq) (interface{}, error) {
+	op := errors.Op("auth.service.handleSignUp")
+
+	params := &repository.QueryParams{
+		TableName: "users",
+		Columns:   []string{"id"},
+		Where:     "email ILIKE ? OR username ILIKE ?",
+		Args:      []interface{}{body.Identifier, body.Identifier},
+	}
+
+	count, err := s.userRepo.CountByConditions(params)
+	if err != nil {
+		return nil, err
+	}
+
+	if *count == 0 {
+		return nil, errors.E(op, http.StatusBadRequest, "account is not exists")
+	}
+
+	//TODO Send new password to mail
+
+	return map[string]bool{
+		"isSucceed": true,
+	}, nil
+}
+
+func (s *Service) handleChangePassword(body *models.ChangePasswordReq, id string) (interface{}, error) {
+	op := errors.Op("auth.service.handleChangePassword")
+
+	var data struct {
+		ID       string `json:"id"`
+		Password string `json:"password"`
+	}
+
+	params := &repository.QueryParams{
+		TableName: "users",
+		Columns:   []string{"id"},
+		Where:     "id = ?",
+		Args:      []interface{}{id},
+	}
+
+	err := s.userRepo.DetailByConditions(&data, params)
+	if err != nil {
+		return nil, err
+	}
+
+	match := utils.CompareHashPassword(body.OldPassword, data.Password)
+	if !match {
+		return nil, errors.E(op, http.StatusBadRequest, "old password not match")
+	}
+
+	updateParams := &repository.UpdateParams{
+		TableName: "users",
+		Where:     "id = ?",
+		Args:      []interface{}{id},
+		Data: map[string]interface{}{
+			"password": utils.HashPassword(body.Password),
+		},
+	}
+
+	err = s.userRepo.UpdateByConditions(updateParams)
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO Send new password to mail
+	return map[string]interface{}{
+		"data": data,
 	}, nil
 }

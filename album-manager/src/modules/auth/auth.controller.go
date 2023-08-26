@@ -2,8 +2,11 @@ package auth
 
 import (
 	"album-manager/src/errors"
+	"album-manager/src/middleware"
+	"album-manager/src/models"
 	"album-manager/src/modules/user"
 	res "album-manager/src/utils/response"
+	t "album-manager/src/utils/token"
 	"album-manager/src/utils/validate"
 
 	"net/http"
@@ -26,6 +29,8 @@ func InitController(r *gin.RouterGroup, userRepo user.Repository) *Controller {
 	{
 		authR.POST("/sign-in", h.handleSignIn)
 		authR.POST("/sign-up", h.handleSignUp)
+		authR.POST("/reset-password", h.handleResetPassword)
+		authR.POST("/change-password", middleware.AuthMiddleware, h.handleChangePassword)
 	}
 
 	return h
@@ -34,7 +39,7 @@ func InitController(r *gin.RouterGroup, userRepo user.Repository) *Controller {
 func (h *Controller) handleSignIn(c *gin.Context) {
 	op := errors.Op("auth.controller.handleSignIn")
 
-	var body user.LoginUserReq
+	var body models.LoginUserReq
 
 	if err := validate.ReadValid(&body, c); err != nil {
 		res.WriteError(c, errors.E(op, err))
@@ -54,7 +59,7 @@ func (h *Controller) handleSignIn(c *gin.Context) {
 func (h *Controller) handleSignUp(c *gin.Context) {
 	op := errors.Op("auth.controller.handleSignUp")
 
-	var body user.SignUpUserReq
+	var body models.SignUpUserReq
 
 	if err := validate.ReadValid(&body, c); err != nil {
 		res.WriteError(c, errors.E(op, err))
@@ -71,69 +76,48 @@ func (h *Controller) handleSignUp(c *gin.Context) {
 	res.Write(c, result, http.StatusOK)
 }
 
-// func (h *Controller) handlerGetUser(w http.ResponseWriter, r *http.Request) {
-// 	id := chi.URLParam(r, "id")
-// 	result, err := h.service.HandlerGetUser(id)
+func (h *Controller) handleResetPassword(c *gin.Context) {
+	op := errors.Op("auth.controller.handleSignUp")
 
-// 	if err != nil {
-// 		res.WriteError(c, err)
-// 		return
-// 	}
+	var body models.ResetPasswordReq
 
-// 	res.Write(c, result, http.StatusOK)
-// }
+	if err := validate.ReadValid(&body, c); err != nil {
+		res.WriteError(c, errors.E(op, err))
+		return
+	}
 
-// func (h *Controller) handlerDeleteUser(w http.ResponseWriter, r *http.Request) {
-// 	result, err := h.service.HandlerDeleteUser(chi.URLParam(r, "id"))
+	result, err := h.service.handleResetPassword(&body)
 
-// 	if err != nil {
-// 		res.WriteError(c, err)
-// 		return
-// 	}
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
 
-// 	res.Write(c, result, http.StatusOK)
-// }
+	res.Write(c, result, http.StatusOK)
+}
 
-// func (h *Controller) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
-// 	var body CreateUserReq
+func (h *Controller) handleChangePassword(c *gin.Context) {
+	op := errors.Op("auth.controller.handleChangePassword")
 
-// 	err := json.NewDecoder(r.Body).Decode(&body)
-// 	if err != nil {
-// 		res.WriteError(c, err)
-// 		return
-// 	}
+	var body models.ChangePasswordReq
 
-// 	validate := validator.New()
+	if err := validate.ReadValid(&body, c); err != nil {
+		res.WriteError(c, errors.E(op, err))
+		return
+	}
 
-// 	err = validate.Struct(body)
-// 	if err != nil {
-// 		res.WriteError(c, err)
-// 		return
-// 	}
+	claims, err := t.GetPayload(c)
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
 
-// 	result := h.service.HandlerCreateUser(&body)
-// 	res.Write(c, result, http.StatusOK)
-// }
+	result, err := h.service.handleChangePassword(&body, claims.ID)
 
-// func (h *Controller) handlerUpdateUser(w http.ResponseWriter, r *http.Request) {
-// 	var body CreateUserReq
-// 	// var id = chi.URLParam(r, "id")
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
 
-// 	err := json.NewDecoder(r.Body).Decode(&body)
-// 	if err != nil {
-// 		res.WriteError(c, err)
-// 		return
-// 	}
-
-// 	validate := validator.New()
-
-// 	err = validate.Struct(body)
-// 	if err != nil {
-// 		// Handle validation errors
-// 		res.WriteError(c, err)
-// 		return
-// 	}
-
-// 	result := h.service.HandlerCreateUser(&body)
-// 	res.Write(c, result, http.StatusOK)
-// }
+	res.Write(c, result, http.StatusOK)
+}

@@ -1,6 +1,8 @@
 package user
 
 import (
+	"album-manager/src/common/repository"
+	"album-manager/src/models"
 	"errors"
 )
 
@@ -18,7 +20,7 @@ func (s *Service) HandlerGetUsers() (interface{}, error) {
 	return data, nil
 }
 
-func (s *Service) HandlerGetUser(id string) (*User, error) {
+func (s *Service) HandlerGetUser(id string) (*models.User, error) {
 	var data, err = s.repo.DetailByID(id)
 
 	if err != nil {
@@ -44,7 +46,7 @@ func (s *Service) HandlerDeleteUser(id string) (interface{}, error) {
 	}, nil
 }
 
-func (s *Service) HandlerCreateUser(body *CreateUserReq) interface{} {
+func (s *Service) HandlerCreateUser(body *models.User) interface{} {
 	// result := s.repo.InsertOne(body.Name, body.Description)
 
 	return map[string]string{
@@ -52,7 +54,7 @@ func (s *Service) HandlerCreateUser(body *CreateUserReq) interface{} {
 	}
 }
 
-func (s *Service) HandlerUpdateUser(body *CreateUserReq) interface{} {
+func (s *Service) HandlerUpdateUser(body *models.CreateUserReq) interface{} {
 	// result := s.repo.InsertOne(body.Name, body.Description)
 
 	return map[string]string{
@@ -62,14 +64,15 @@ func (s *Service) HandlerUpdateUser(body *CreateUserReq) interface{} {
 
 func (s *Service) HandlerGetProfile(id string) (interface{}, error) {
 	var data struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		ID       string `json:"id"`
+		Email    string `json:"email"`
+		Name     string `json:"name"`
+		Username string `json:"username"`
 	}
 
-	params := &QueryParams{
+	params := &repository.QueryParams{
 		TableName: "users",
-		Columns:   []string{"id", "name", "email"},
+		Columns:   []string{"id", "name", "email", "username"},
 		Where:     "id = $1",
 		Args:      []interface{}{id},
 	}
@@ -81,23 +84,17 @@ func (s *Service) HandlerGetProfile(id string) (interface{}, error) {
 	return &data, nil
 }
 
-func (s *Service) HandlerUpdateProfile(id string, body interface{}) (interface{}, error) {
-	var data struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
-	}
-
-	params := &QueryParams{
+func (s *Service) HandlerUpdateProfile(id string, body models.UpdateUserProfileReq) (interface{}, error) {
+	params := &repository.UpdateParams{
 		TableName: "users",
-		Columns:   []string{"id", "name", "email"},
-		Where:     "id = $1",
+		Where:     "id = ?",
 		Args:      []interface{}{id},
+		Data:      body,
 	}
 
-	if err := s.repo.DetailByConditions(&data, params); err != nil {
+	if err := s.repo.UpdateByConditions(params); err != nil {
 		return nil, err
 	}
 
-	return &data, nil
+	return nil, nil
 }

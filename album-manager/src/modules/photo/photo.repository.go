@@ -2,21 +2,28 @@ package photo
 
 import (
 	"album-manager/src/configs/database"
+	"album-manager/src/models"
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
 	"gorm.io/gorm"
 )
 
+var (
+	TableName = "users"
+)
+
 type Repository interface {
 	InsertOne(params interface{}) (*string, error)
-	List() (*[]Photo, error)
-	DetailByID(id string) (*Photo, error)
+	List() (*[]models.Photo, error)
+	DetailByID(id string) (*models.Photo, error)
 	Delete(id string) error
 	DetailByConditions(dest interface{}, params *QueryParams) error
-	UpdateByConditions(dest interface{}, params *UpdateParams) error
+	UpdateByConditions(params *UpdateParams) error
+	CountByConditions(params *QueryParams) (*int64, error)
 }
 
 type QueryParams struct {
@@ -37,6 +44,7 @@ type UpdateParams struct {
 	Limit     int
 	Offset    int
 	Args      []interface{}
+	Data      interface{}
 }
 
 type FieldData struct {
@@ -50,18 +58,22 @@ type repo struct {
 }
 
 func InitRepository(store *database.PostgresConfig) Repository {
-	store.DB.AutoMigrate(&Photo{})
+	err := store.DB.AutoMigrate(&models.Photo{})
+	if err != nil {
+		log.Panicf(`Migrate table "users" failed: %v\n`, err)
+	}
+
 	return &repo{
 		db:  store.DB,
 		ctx: store.Ctx,
 	}
 }
 
-func (r *repo) List() (*[]Photo, error) {
-	var data []Photo
+func (r *repo) List() (*[]models.Photo, error) {
+	var data []models.Photo
 	// rows, err := r.db.Query(context.Background(), `
 	// 	SELECT *
-	// 	FROM Photos
+	// 	FROM users
 	// 	WHERE deleted_at IS NULL
 	// `)
 
@@ -70,7 +82,7 @@ func (r *repo) List() (*[]Photo, error) {
 	// }
 
 	// defer rows.Close()
-	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[Photo])
+	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[User])
 
 	// if err != nil {
 	// 	return nil, err
@@ -79,9 +91,9 @@ func (r *repo) List() (*[]Photo, error) {
 	return &data, nil
 }
 
-func (r *repo) DetailByID(id string) (*Photo, error) {
+func (r *repo) DetailByID(id string) (*models.Photo, error) {
 	// rows, err := r.db.Query(context.Background(), `
-	// 	SELECT * FROM Photos WHERE id = $1
+	// 	SELECT * FROM Users WHERE id = $1
 	// `, id)
 
 	// if err != nil {
@@ -89,7 +101,7 @@ func (r *repo) DetailByID(id string) (*Photo, error) {
 	// }
 
 	// defer rows.Close()
-	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[Photo])
+	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[User])
 
 	// if err != nil {
 	// 	return nil, err
@@ -100,13 +112,13 @@ func (r *repo) DetailByID(id string) (*Photo, error) {
 	// if len(data) == 0 {
 	// 	return nil, nil
 	// }
-	var data Photo
+	var data models.Photo
 	return &data, nil
 }
 
 func (r *repo) Delete(id string) error {
 	// _, err := r.db.Exec(context.Background(), `
-	// 	UPDATE Photos SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1
+	// 	UPDATE Users SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1
 	// `, id)
 
 	// if err != nil {
@@ -118,61 +130,27 @@ func (r *repo) Delete(id string) error {
 
 func (r *repo) InsertOne(params interface{}) (*string, error) {
 	var id string
+	result := r.db.Table(TableName).Create(params).Select("id").Scan(&id)
 
-	// data := r.getStructFields(params)
-
-	// // Solution 1 pass args
-	// // query := `
-	// // 	INSERT INTO admin(name, description)
-	// // 	VALUES (@name, @description)
-	// // 	RETURNING id;
-	// // `
-	// // args := pgx.NamedArgs{
-	// // 	"name":        name,
-	// // 	"description": description,
-	// // }
-	// // err := r.db.QueryRow(context.Background(), query, args).Scan(&id)
-
-	// // Solution 2 pass args
-	// // query :=
-
-	// var args []interface{}
-	// var valueStrings []string
-	// var keys []string
-
-	// for i, d := range data {
-	// 	valueStrings = append(valueStrings, fmt.Sprintf("$%d", i+1))
-	// 	keys = append(keys, d.Key)
-	// 	args = append(args, d.Value)
-	// }
-
-	// query := fmt.Sprintf(`
-	// INSERT INTO Photos(%s)
-	// VALUES (%s)
-	// RETURNING id;
-	// `, strings.Join(keys, ","), strings.Join(valueStrings, ","))
-
-	// err := r.db.QueryRow(context.Background(), query, args...).Scan(&id)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return nil, err
-	// }
+	if result.Error != nil {
+		return nil, result.Error
+	}
 
 	return &id, nil
 }
 
-// CreatePhoto creates a new Photo in the db..
-// func (r *repo) CreatePhoto(Photo model.Photo) (model.Photo, error) {
+// CreateUser creates a new user in the db..
+// func (r *repo) CreateUser(user model.User) (model.User, error) {
 // 	// TODO handle the potential error below.
-// 	hashedPass, _ := hashPassword(Photo.Password)
-// 	Photo.Password = hashedPass
+// 	hashedPass, _ := hashPassword(user.Password)
+// 	user.Password = hashedPass
 
-// 	result := repo.db.Create(&Photo)
+// 	result := repo.db.Create(&user)
 // 	fmt.Println(result)
-// 	// result := h.db.Create(&Photo)
+// 	// result := h.db.Create(&user)
 // 	// if result.Error
-// 	fmt.Println("Inserted a Photo with ID:", Photo.ID)
-// 	return Photo, nil
+// 	fmt.Println("Inserted a user with ID:", user.ID)
+// 	return user, nil
 // }
 
 // func hashPassword(password string) (string, error) {
@@ -180,34 +158,34 @@ func (r *repo) InsertOne(params interface{}) (*string, error) {
 // 	return string(bytes), err
 // }
 
+func (r *repo) CountByConditions(params *QueryParams) (*int64, error) {
+	var count int64
+	result := r.db.Table(params.TableName).Where(params.Where, params.Args...).Count(&count)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return &count, nil
+}
+
 func (r *repo) DetailByConditions(dest interface{}, params *QueryParams) error {
-	// query, args := r.generateQuery(params)
-	// err := r.db.QueryRow(context.Background(), query, args...).Scan(r.strutForScan(dest)...)
+	result := r.db.Table(params.TableName).Where(params.Where, params.Args...).First(&dest)
 
-	// if err != nil {
-	// 	if err == pgx.ErrNoRows {
-	// 		return nil
-	// 	}
-
-	// 	return err
-	// }
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		return result.Error
+	}
 
 	return nil
 }
 
-func (r *repo) UpdateByConditions(dest interface{}, params *UpdateParams) error {
-	// query, args := r.generateQuery(params)
-	// err := r.db.QueryRow(context.Background(), query, args...).Scan(r.strutForScan(dest)...)
+func (r *repo) UpdateByConditions(params *UpdateParams) error {
+	result := r.db.Table(params.TableName).Where(params.Where, params.Args...).Updates(params.Data)
 
-	// if err != nil {
-	// 	if err == pgx.ErrNoRows {
-	// 		return nil
-	// 	}
+	if result.Error != nil {
+		return result.Error
+	}
 
-	// 	return err
-	// }
-
-	// return nil
 	return nil
 }
 

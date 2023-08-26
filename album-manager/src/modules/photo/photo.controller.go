@@ -2,9 +2,8 @@ package photo
 
 import (
 	"album-manager/src/errors"
+	"album-manager/src/middleware"
 	res "album-manager/src/utils/response"
-	t "album-manager/src/utils/token"
-	"album-manager/src/utils/validate"
 	"log"
 
 	"net/http"
@@ -23,6 +22,8 @@ func InitController(r *gin.RouterGroup, repo Repository) *Controller {
 
 	router := r.Group("/photos")
 	{
+		router.Use(middleware.AuthMiddleware)
+
 		router.GET("/", h.uploadPhotos)
 		router.POST("/", h.uploadPhotos)
 		router.GET("/:id", h.getByID)
@@ -70,91 +71,6 @@ func (h *Controller) uploadPhotos(c *gin.Context) {
 func (h *Controller) getByID(c *gin.Context) {
 	result, err := h.service.GetByID(c.Param("id"))
 
-	if err != nil {
-		res.WriteError(c, err)
-		return
-	}
-
-	res.Write(c, result, http.StatusOK)
-}
-
-func (h *Controller) handlerDeleteUser(c *gin.Context) {
-	result, err := h.service.HandlerDeleteUser(c.Param("id"))
-
-	if err != nil {
-		res.WriteError(c, err)
-		return
-	}
-
-	res.Write(c, result, http.StatusOK)
-}
-
-func (h *Controller) handlerCreateUser(c *gin.Context) {
-	var body CreateUserReq
-
-	err := validate.ReadValid(body, c)
-	if err != nil {
-		res.WriteError(c, err)
-		return
-	}
-
-	result := h.service.HandlerCreateUser(&body)
-	res.Write(c, result, http.StatusOK)
-}
-
-func (h *Controller) handlerUpdateUser(c *gin.Context) {
-	var body CreateUserReq
-	// var id = chi.URLParam(r, "id")
-
-	// err := json.NewDecoder(r.Body).Decode(&body)
-	// if err != nil {
-	// 	res.WriteError(c, err)
-	// 	return
-	// }
-
-	// validate := validator.New()
-
-	// err = validate.Struct(body)
-	// if err != nil {
-	// 	// Handle validation errors
-	// 	res.WriteError(c, err)
-	// 	return
-	// }
-
-	result := h.service.HandlerCreateUser(&body)
-	res.Write(c, result, http.StatusOK)
-}
-
-func (h *Controller) handleGetProfile(c *gin.Context) {
-	op := errors.Op("user.controller.handleGetProfile")
-
-	// Retrieve the claims from the request context
-	claims := t.GetPayload(c)
-	if claims == nil {
-		res.WriteError(c, errors.E(op, http.StatusBadRequest, "claims not found"))
-		return
-	}
-
-	result, err := h.service.HandlerGetProfile(claims.ID)
-	if err != nil {
-		res.WriteError(c, err)
-		return
-	}
-
-	res.Write(c, result, http.StatusOK)
-}
-
-func (h *Controller) handleUpdateProfile(c *gin.Context) {
-	var body UpdateUserProfileReq
-
-	if err := validate.ReadValid(&body, c); err != nil {
-		res.WriteError(c, err)
-		return
-	}
-
-	// Retrieve the claims from the request context
-
-	result, err := h.service.HandlerUpdateProfile("claims.ID", body)
 	if err != nil {
 		res.WriteError(c, err)
 		return

@@ -1,11 +1,15 @@
 package album
 
 import (
+	"album-manager/src/models"
+	"album-manager/src/modules/user"
+	"album-manager/src/utils/object"
 	"errors"
 )
 
 type Service struct {
-	repo Repository
+	repo  Repository
+	userR user.Repository
 }
 
 func (s *Service) HandlerGetUsers() (interface{}, error) {
@@ -18,7 +22,7 @@ func (s *Service) HandlerGetUsers() (interface{}, error) {
 	return data, nil
 }
 
-func (s *Service) HandlerGetUser(id string) (*User, error) {
+func (s *Service) HandlerGetUser(id string) (*models.Album, error) {
 	var data, err = s.repo.DetailByID(id)
 
 	if err != nil {
@@ -44,60 +48,37 @@ func (s *Service) HandlerDeleteUser(id string) (interface{}, error) {
 	}, nil
 }
 
-func (s *Service) HandlerCreateUser(body *CreateUserReq) interface{} {
-	// result := s.repo.InsertOne(body.Name, body.Description)
+func (s *Service) create(userID string, body *CreateAlbumReq) (interface{}, error) {
+	var owner = &models.User{ID: userID}
 
-	return map[string]string{
-		"id": "!",
-	}
-}
-
-func (s *Service) HandlerUpdateUser(body *CreateUserReq) interface{} {
-	// result := s.repo.InsertOne(body.Name, body.Description)
-
-	return map[string]string{
-		"id": "!",
-	}
-}
-
-func (s *Service) HandlerGetProfile(id string) (interface{}, error) {
-	var data struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
+	params := &models.Album{
+		Users:   []*models.User{owner},
+		OwnerID: &userID,
 	}
 
-	params := &QueryParams{
-		TableName: "users",
-		Columns:   []string{"id", "name", "email"},
-		Where:     "id = $1",
-		Args:      []interface{}{id},
-	}
-
-	if err := s.repo.DetailByConditions(&data, params); err != nil {
+	err := object.MergeStructIntoModel(params, body)
+	if err != nil {
 		return nil, err
 	}
 
-	return &data, nil
-}
-
-func (s *Service) HandlerUpdateProfile(id string, body interface{}) (interface{}, error) {
-	var data struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
-	}
-
-	params := &QueryParams{
-		TableName: "users",
-		Columns:   []string{"id", "name", "email"},
-		Where:     "id = $1",
-		Args:      []interface{}{id},
-	}
-
-	if err := s.repo.DetailByConditions(&data, params); err != nil {
+	id, err := s.repo.InsertOne(params)
+	if err != nil {
 		return nil, err
 	}
 
-	return &data, nil
+	return map[string]interface{}{
+		"id": id,
+	}, nil
+}
+
+func (s *Service) deleteByID(userID, id string) (interface{}, error) {
+
+	// count := s.repo.
+
+	// err := s.repo.Delete(id)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return nil, nil
 }

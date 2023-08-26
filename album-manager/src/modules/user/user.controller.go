@@ -1,7 +1,8 @@
 package user
 
 import (
-	"album-manager/src/errors"
+	"album-manager/src/middleware"
+	"album-manager/src/models"
 	res "album-manager/src/utils/response"
 	t "album-manager/src/utils/token"
 	"album-manager/src/utils/validate"
@@ -22,19 +23,13 @@ func InitController(r *gin.RouterGroup, repo Repository) *Controller {
 		},
 	}
 
-	// r.Group("/admin/users")
-	// {
-	// 	r.GET("/", h.handlerGetUsers)
-	// 	r.POST("/", h.handlerCreateUser)
-	// 	r.GET("/:id", h.handlerGetUser)
-	// 	r.PATCH("/:id", h.handlerUpdateUser)
-	// 	r.DELETE("/:id", h.handlerDeleteUser)
-	// }
+	router := r.Group("/user")
+	{
+		router.Use(middleware.AuthMiddleware)
 
-	// r.Route("/user", func(r gin.Engine) {
-	// 	r.Get("/profile", middleware.AuthMiddleware(h.handleGetProfile))
-	// 	r.Patch("/profile", middleware.AuthMiddleware(h.handleUpdateProfile))
-	// })
+		router.GET("/profile", h.handleGetProfile)
+		router.PATCH("/profile", h.handleUpdateProfile)
+	}
 
 	return h
 }
@@ -72,49 +67,11 @@ func (h *Controller) handlerDeleteUser(c *gin.Context) {
 	res.Write(c, result, http.StatusOK)
 }
 
-func (h *Controller) handlerCreateUser(c *gin.Context) {
-	var body CreateUserReq
-
-	err := validate.ReadValid(body, c)
+func (h *Controller) handleGetProfile(c *gin.Context) {
+	// Retrieve the claims from the request context
+	claims, err := t.GetPayload(c)
 	if err != nil {
 		res.WriteError(c, err)
-		return
-	}
-
-	result := h.service.HandlerCreateUser(&body)
-	res.Write(c, result, http.StatusOK)
-}
-
-func (h *Controller) handlerUpdateUser(c *gin.Context) {
-	var body CreateUserReq
-	// var id = chi.URLParam(r, "id")
-
-	// err := json.NewDecoder(r.Body).Decode(&body)
-	// if err != nil {
-	// 	res.WriteError(c, err)
-	// 	return
-	// }
-
-	// validate := validator.New()
-
-	// err = validate.Struct(body)
-	// if err != nil {
-	// 	// Handle validation errors
-	// 	res.WriteError(c, err)
-	// 	return
-	// }
-
-	result := h.service.HandlerCreateUser(&body)
-	res.Write(c, result, http.StatusOK)
-}
-
-func (h *Controller) handleGetProfile(c *gin.Context) {
-	op := errors.Op("user.controller.handleGetProfile")
-
-	// Retrieve the claims from the request context
-	claims := t.GetPayload(c)
-	if claims == nil {
-		res.WriteError(c, errors.E(op, http.StatusBadRequest, "claims not found"))
 		return
 	}
 
@@ -128,7 +85,7 @@ func (h *Controller) handleGetProfile(c *gin.Context) {
 }
 
 func (h *Controller) handleUpdateProfile(c *gin.Context) {
-	var body UpdateUserProfileReq
+	var body models.UpdateUserProfileReq
 
 	if err := validate.ReadValid(&body, c); err != nil {
 		res.WriteError(c, err)
@@ -136,8 +93,13 @@ func (h *Controller) handleUpdateProfile(c *gin.Context) {
 	}
 
 	// Retrieve the claims from the request context
+	claims, err := t.GetPayload(c)
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
 
-	result, err := h.service.HandlerUpdateProfile("claims.ID", body)
+	result, err := h.service.HandlerUpdateProfile(claims.ID, body)
 	if err != nil {
 		res.WriteError(c, err)
 		return

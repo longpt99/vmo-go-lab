@@ -61,11 +61,11 @@ func VerifyToken(signedToken string) (*Claims, error) {
 	return claims, nil
 }
 
-func GetPayload(c *gin.Context) *Claims {
+func GetPayload(c *gin.Context) (*Claims, error) {
 	claims, ok := c.MustGet("claims").(*Claims)
-	if !ok {
-		return nil
+	if !ok && claims == nil {
+		return nil, errors.E(errors.Op("token.GetPayload"), http.StatusBadRequest, "claims not found")
 	}
 
-	return claims
+	return claims, nil
 }

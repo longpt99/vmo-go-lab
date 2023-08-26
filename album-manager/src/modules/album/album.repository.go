@@ -1,22 +1,28 @@
 package album
 
 import (
+	"album-manager/src/common/repository"
 	"album-manager/src/configs/database"
+	"album-manager/src/models"
 	"context"
-	"fmt"
-	"reflect"
-	"strings"
+	"log"
 
 	"gorm.io/gorm"
 )
 
+var (
+	TableName = "albums"
+)
+
 type Repository interface {
-	InsertOne(params interface{}) (*string, error)
-	List() (*[]User, error)
-	DetailByID(id string) (*User, error)
-	Delete(id string) error
-	DetailByConditions(dest interface{}, params *QueryParams) error
-	UpdateByConditions(dest interface{}, params *UpdateParams) error
+	repository.Repository[models.Album]
+
+	// InsertOne(params *models.Album) (*string, error)
+	// List() (*[]models.Album, error)
+	// DetailByID(id string) (*models.Album, error)
+	// Delete(id string) error
+	// DetailByConditions(dest interface{}, params *QueryParams) error
+	// UpdateByConditions(dest interface{}, params *UpdateParams) error
 }
 
 type QueryParams struct {
@@ -44,240 +50,222 @@ type FieldData struct {
 	Value interface{}
 }
 
+// In this example, the repo struct embeds the repository.Repository interface directly.
+// By doing so, the repo struct inherits all the methods from repository.Repository,
+// including the InsertOne method.
+
+// Now, when you initialize a repo instance in the InitRepository function,
+// you can assign the repository.InitRepository(store) to the Repository field directly.
+
+// By embedding the repository.Repository interface in the repo struct,
+// you avoid the need to redefine the InsertOne method in the repo struct
+// while still satisfying the Repository interface.
 type repo struct {
 	db  *gorm.DB
 	ctx context.Context
+	repository.Repository[models.Album]
 }
 
 func InitRepository(store *database.PostgresConfig) Repository {
+	err := store.DB.AutoMigrate(&models.Album{})
+	if err != nil {
+		log.Panicf(`Migrate table "album" failed: %v\n`, err)
+	}
+
 	return &repo{
-		db:  store.DB,
-		ctx: store.Ctx,
+		db:         store.DB,
+		ctx:        store.Ctx,
+		Repository: repository.InitRepository[models.Album](store),
 	}
 }
 
-func (r *repo) List() (*[]User, error) {
-	var data []User
-	// rows, err := r.db.Query(context.Background(), `
-	// 	SELECT *
-	// 	FROM users
-	// 	WHERE deleted_at IS NULL
-	// `)
+// func (r *repo) List() (*[]models.Album, error) {
+// 	var data []models.Album
+// 	// rows, err := r.db.Query(context.Background(), `
+// 	// 	SELECT *
+// 	// 	FROM Albums
+// 	// 	WHERE deleted_at IS NULL
+// 	// `)
 
-	// if err != nil {
-	// 	return nil, err
-	// }
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
 
-	// defer rows.Close()
-	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[User])
+// 	// defer rows.Close()
+// 	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[Album])
 
-	// if err != nil {
-	// 	return nil, err
-	// }
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
 
-	return &data, nil
-}
-
-func (r *repo) DetailByID(id string) (*User, error) {
-	// rows, err := r.db.Query(context.Background(), `
-	// 	SELECT * FROM Users WHERE id = $1
-	// `, id)
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// defer rows.Close()
-	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[User])
-
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// fmt.Println(len(data))
-
-	// if len(data) == 0 {
-	// 	return nil, nil
-	// }
-	var data User
-	return &data, nil
-}
-
-func (r *repo) Delete(id string) error {
-	// _, err := r.db.Exec(context.Background(), `
-	// 	UPDATE Users SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1
-	// `, id)
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	return nil
-}
-
-func (r *repo) InsertOne(params interface{}) (*string, error) {
-	var id string
-
-	// data := r.getStructFields(params)
-
-	// // Solution 1 pass args
-	// // query := `
-	// // 	INSERT INTO admin(name, description)
-	// // 	VALUES (@name, @description)
-	// // 	RETURNING id;
-	// // `
-	// // args := pgx.NamedArgs{
-	// // 	"name":        name,
-	// // 	"description": description,
-	// // }
-	// // err := r.db.QueryRow(context.Background(), query, args).Scan(&id)
-
-	// // Solution 2 pass args
-	// // query :=
-
-	// var args []interface{}
-	// var valueStrings []string
-	// var keys []string
-
-	// for i, d := range data {
-	// 	valueStrings = append(valueStrings, fmt.Sprintf("$%d", i+1))
-	// 	keys = append(keys, d.Key)
-	// 	args = append(args, d.Value)
-	// }
-
-	// query := fmt.Sprintf(`
-	// INSERT INTO users(%s)
-	// VALUES (%s)
-	// RETURNING id;
-	// `, strings.Join(keys, ","), strings.Join(valueStrings, ","))
-
-	// err := r.db.QueryRow(context.Background(), query, args...).Scan(&id)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return nil, err
-	// }
-
-	return &id, nil
-}
-
-// CreateUser creates a new user in the db..
-// func (r *repo) CreateUser(user model.User) (model.User, error) {
-// 	// TODO handle the potential error below.
-// 	hashedPass, _ := hashPassword(user.Password)
-// 	user.Password = hashedPass
-
-// 	result := repo.db.Create(&user)
-// 	fmt.Println(result)
-// 	// result := h.db.Create(&user)
-// 	// if result.Error
-// 	fmt.Println("Inserted a user with ID:", user.ID)
-// 	return user, nil
+// 	return &data, nil
 // }
 
-// func hashPassword(password string) (string, error) {
-// 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-// 	return string(bytes), err
+// func (r *repo) DetailByID(id string) (*models.Album, error) {
+// 	// rows, err := r.db.Query(context.Background(), `
+// 	// 	SELECT * FROM Albums WHERE id = $1
+// 	// `, id)
+
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	// defer rows.Close()
+// 	// data, err := pgx.CollectRows(rows, pgx.RowToStructByName[Album])
+
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+
+// 	// fmt.Println(len(data))
+
+// 	// if len(data) == 0 {
+// 	// 	return nil, nil
+// 	// }
+// 	var data models.Album
+// 	return &data, nil
 // }
 
-func (r *repo) DetailByConditions(dest interface{}, params *QueryParams) error {
-	// query, args := r.generateQuery(params)
-	// err := r.db.QueryRow(context.Background(), query, args...).Scan(r.strutForScan(dest)...)
+// func (r *repo) Delete(id string) error {
+// 	result := r.db.Delete(&models.Album{ID: id})
 
-	// if err != nil {
-	// 	if err == pgx.ErrNoRows {
-	// 		return nil
-	// 	}
+// 	if result.Error != nil {
+// 		return result.Error
+// 	}
 
-	// 	return err
-	// }
+// 	return nil
+// }
 
-	return nil
-}
+// func (r *repo) InsertOne(params *models.Album) (*string, error) {
+// 	var id string
 
-func (r *repo) UpdateByConditions(dest interface{}, params *UpdateParams) error {
-	// query, args := r.generateQuery(params)
-	// err := r.db.QueryRow(context.Background(), query, args...).Scan(r.strutForScan(dest)...)
+// 	result := r.db.Create(params).Select("id").Scan(&id)
 
-	// if err != nil {
-	// 	if err == pgx.ErrNoRows {
-	// 		return nil
-	// 	}
+// 	if result.Error != nil {
+// 		return nil, result.Error
+// 	}
 
-	// 	return err
-	// }
+// 	return &id, nil
+// }
 
-	// return nil
-	return nil
-}
+// // CreateAlbum creates a new Album in the db..
+// // func (r *repo) CreateAlbum(Album model.Album) (model.Album, error) {
+// // 	// TODO handle the potential error below.
+// // 	hashedPass, _ := hashPassword(Album.Password)
+// // 	Album.Password = hashedPass
 
-func (r *repo) generateQuery(params *QueryParams) (string, []interface{}) {
-	var sb strings.Builder
+// // 	result := repo.db.Create(&Album)
+// // 	fmt.Println(result)
+// // 	// result := h.db.Create(&Album)
+// // 	// if result.Error
+// // 	fmt.Println("Inserted a Album with ID:", Album.ID)
+// // 	return Album, nil
+// // }
 
-	sb.WriteString("SELECT ")
+// // func hashPassword(password string) (string, error) {
+// // 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+// // 	return string(bytes), err
+// // }
 
-	if len(params.Columns) == 0 {
-		sb.WriteString("*")
-	} else {
-		sb.WriteString(strings.Join(params.Columns, ", "))
-	}
+// func (r *repo) DetailByConditions(dest interface{}, params *QueryParams) error {
+// 	// query, args := r.generateQuery(params)
+// 	// err := r.db.QueryRow(context.Background(), query, args...).Scan(r.strutForScan(dest)...)
 
-	sb.WriteString(fmt.Sprintf(" FROM %s", params.TableName))
+// 	// if err != nil {
+// 	// 	if err == pgx.ErrNoRows {
+// 	// 		return nil
+// 	// 	}
 
-	if params.Where != "" {
-		sb.WriteString(fmt.Sprintf(" WHERE %s", params.Where))
-	}
+// 	// 	return err
+// 	// }
 
-	if params.OrderBy != "" {
-		sb.WriteString(fmt.Sprintf(" ORDER BY %s", params.OrderBy))
-	}
+// 	return nil
+// }
 
-	if params.Limit > 0 {
-		sb.WriteString(fmt.Sprintf(" LIMIT %d", params.Limit))
-	}
+// func (r *repo) UpdateByConditions(dest interface{}, params *UpdateParams) error {
+// 	// query, args := r.generateQuery(params)
+// 	// err := r.db.QueryRow(context.Background(), query, args...).Scan(r.strutForScan(dest)...)
 
-	if params.Offset > 0 {
-		sb.WriteString(fmt.Sprintf(" OFFSET %d", params.Offset))
-	}
+// 	// if err != nil {
+// 	// 	if err == pgx.ErrNoRows {
+// 	// 		return nil
+// 	// 	}
 
-	query := sb.String()
+// 	// 	return err
+// 	// }
 
-	return query, params.Args
-}
+// 	// return nil
+// 	return nil
+// }
 
-func (r *repo) strutForScan(u interface{}) []interface{} {
-	val := reflect.ValueOf(u).Elem()
-	v := make([]interface{}, val.NumField())
+// func (r *repo) generateQuery(params *QueryParams) (string, []interface{}) {
+// 	var sb strings.Builder
 
-	for i := 0; i < val.NumField(); i++ {
-		valueField := val.Field(i)
-		v[i] = valueField.Addr().Interface()
-	}
+// 	sb.WriteString("SELECT ")
 
-	return v
-}
+// 	if len(params.Columns) == 0 {
+// 		sb.WriteString("*")
+// 	} else {
+// 		sb.WriteString(strings.Join(params.Columns, ", "))
+// 	}
 
-func (r *repo) getStructFields(data interface{}) []FieldData {
-	var fields []FieldData
+// 	sb.WriteString(fmt.Sprintf(" FROM %s", params.TableName))
 
-	value := reflect.ValueOf(data)
-	if value.Kind() != reflect.Struct {
-		fmt.Println("Not a struct.")
-		return nil
-	}
+// 	if params.Where != "" {
+// 		sb.WriteString(fmt.Sprintf(" WHERE %s", params.Where))
+// 	}
 
-	typeOf := value.Type()
+// 	if params.OrderBy != "" {
+// 		sb.WriteString(fmt.Sprintf(" ORDER BY %s", params.OrderBy))
+// 	}
 
-	for i := 0; i < value.NumField(); i++ {
-		field := value.Field(i)
-		fieldName := typeOf.Field(i).Name
+// 	if params.Limit > 0 {
+// 		sb.WriteString(fmt.Sprintf(" LIMIT %d", params.Limit))
+// 	}
 
-		if field.Kind() == reflect.Struct {
-			embeddedFields := r.getStructFields(field.Interface())
-			fields = append(fields, embeddedFields...)
-		} else {
-			fields = append(fields, FieldData{Key: strings.ToLower(fieldName), Value: field.Interface()})
-		}
-	}
+// 	if params.Offset > 0 {
+// 		sb.WriteString(fmt.Sprintf(" OFFSET %d", params.Offset))
+// 	}
 
-	return fields
-}
+// 	query := sb.String()
+
+// 	return query, params.Args
+// }
+
+// func (r *repo) strutForScan(u interface{}) []interface{} {
+// 	val := reflect.ValueOf(u).Elem()
+// 	v := make([]interface{}, val.NumField())
+
+// 	for i := 0; i < val.NumField(); i++ {
+// 		valueField := val.Field(i)
+// 		v[i] = valueField.Addr().Interface()
+// 	}
+
+// 	return v
+// }
+
+// func (r *repo) getStructFields(data interface{}) []FieldData {
+// 	var fields []FieldData
+
+// 	value := reflect.ValueOf(data)
+// 	if value.Kind() != reflect.Struct {
+// 		fmt.Println("Not a struct.")
+// 		return nil
+// 	}
+
+// 	typeOf := value.Type()
+
+// 	for i := 0; i < value.NumField(); i++ {
+// 		field := value.Field(i)
+// 		fieldName := typeOf.Field(i).Name
+
+// 		if field.Kind() == reflect.Struct {
+// 			embeddedFields := r.getStructFields(field.Interface())
+// 			fields = append(fields, embeddedFields...)
+// 		} else {
+// 			fields = append(fields, FieldData{Key: strings.ToLower(fieldName), Value: field.Interface()})
+// 		}
+// 	}
+
+// 	return fields
+// }

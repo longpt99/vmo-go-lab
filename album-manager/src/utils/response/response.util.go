@@ -49,6 +49,10 @@ func Write(c *gin.Context, payload interface{}, status int) {
 	// 	return
 	// }
 	// Set the appropriate headers to indicate gzip compression and JSON content type
+	if payload == nil {
+		payload = map[string]bool{"isSucceed": true}
+	}
+
 	c.JSON(status, payload)
 }
 
