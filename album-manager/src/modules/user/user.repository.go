@@ -10,10 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	TableName = "users"
-)
-
 type Repository interface {
 	repository.Repository[models.User]
 }

@@ -5,7 +5,7 @@ import (
 )
 
 type Photo struct {
-	ID        string     `json:"id" gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()`
+	ID        string     `json:"id" gorm:"column:id;primaryKey;type:uuid;default:uuid_generate_v4()"`
 	UserID    string     `json:"user_id" gorm:"column:user_id"`
 	Path      string     `json:"path" gorm:"column:path"`
 	Status    string     `json:"status" gorm:"column:status"`

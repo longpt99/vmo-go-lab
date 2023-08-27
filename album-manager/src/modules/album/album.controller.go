@@ -1,8 +1,8 @@
 package album
 
 import (
+	"album-manager/src/common/models"
 	"album-manager/src/middleware"
-	"album-manager/src/models"
 	"album-manager/src/modules/user"
 	res "album-manager/src/utils/response"
 	t "album-manager/src/utils/token"
@@ -40,7 +40,15 @@ func InitController(r *gin.RouterGroup, repo Repository, userR user.Repository) 
 }
 
 func (h *Controller) list(c *gin.Context) {
-	result, err := h.service.HandlerGetUsers()
+	var queryParams models.QueryStringParams
+
+	err := validate.ReadQueryValid(&queryParams, c)
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
+
+	result, err := h.service.List(queryParams)
 
 	if err != nil {
 		res.WriteError(c, err)
@@ -87,16 +95,27 @@ func (h *Controller) getByID(c *gin.Context) {
 }
 
 func (h *Controller) updateByID(c *gin.Context) {
-	var body models.CreateUserReq
-
-	err := validate.ReadValid(body, c)
+	claims, err := t.GetPayload(c)
 	if err != nil {
 		res.WriteError(c, err)
 		return
 	}
 
-	// result := h.service.HandlerCreateUser(&body)
-	// res.Write(c, result, http.StatusOK)
+	var body UpdateAlbumReq
+
+	err = validate.ReadValid(&body, c)
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
+
+	result, err := h.service.updateByID(claims.ID, c.Param("id"), &body)
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
+
+	res.Write(c, result, http.StatusOK)
 }
 
 func (h *Controller) deleteByID(c *gin.Context) {

@@ -1,10 +1,13 @@
 package album
 
 import (
+	mC "album-manager/src/common/models"
+	"album-manager/src/common/repository"
+	"album-manager/src/errors"
 	"album-manager/src/models"
 	"album-manager/src/modules/user"
 	"album-manager/src/utils/object"
-	"errors"
+	"net/http"
 )
 
 type Service struct {
@@ -12,8 +15,11 @@ type Service struct {
 	userR user.Repository
 }
 
-func (s *Service) HandlerGetUsers() (interface{}, error) {
-	var data, err = s.repo.List()
+func (s *Service) List(query mC.QueryStringParams) (interface{}, error) {
+	var data, err = s.repo.List(&repository.FindParams{
+		Select:            []string{"id", "name", "description", "status"},
+		QueryStringParams: query,
+	})
 
 	if err != nil {
 		return nil, err
@@ -30,7 +36,7 @@ func (s *Service) HandlerGetUser(id string) (*models.Album, error) {
 	}
 
 	if data == nil {
-		return nil, errors.New("User Not Found")
+		return nil, errors.Str("User Not Found")
 	}
 
 	return data, nil
@@ -71,14 +77,55 @@ func (s *Service) create(userID string, body *CreateAlbumReq) (interface{}, erro
 	}, nil
 }
 
+func (s *Service) updateByID(userID, id string, body *UpdateAlbumReq) (interface{}, error) {
+	count, err := s.repo.CountByConditions(&repository.QueryParams{
+		Where: "owner_id = ? AND id = ?",
+		Args:  []interface{}{userID, id},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if *count == 0 {
+		return nil, errors.E(errors.Op("updateByID"), http.StatusBadRequest, "album not found")
+	}
+
+	params := &models.Album{}
+
+	err = object.MergeStructIntoModel(params, body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repo.UpdateByConditions(&repository.UpdateParams{
+		Where: "owner_id = ? AND id = ?",
+		Args:  []interface{}{userID, id},
+		Data:  params,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
 func (s *Service) deleteByID(userID, id string) (interface{}, error) {
+	count, err := s.repo.CountByConditions(&repository.QueryParams{
+		Where: "owner_id = ? AND id = ?",
+		Args:  []interface{}{userID, id},
+	})
+	if err != nil {
+		return nil, err
+	}
 
-	// count := s.repo.
+	if *count == 0 {
+		return nil, errors.E(errors.Op("deleteByID"), http.StatusBadRequest, "album not found")
+	}
 
-	// err := s.repo.Delete(id)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err = s.repo.Delete(id)
+	if err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }

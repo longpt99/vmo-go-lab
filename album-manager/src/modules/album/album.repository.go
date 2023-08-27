@@ -26,28 +26,28 @@ type Repository interface {
 }
 
 type QueryParams struct {
-	Columns   []string
+	Args      []interface{}
 	TableName string
 	Where     string
 	OrderBy   string
+	Columns   []string
 	Limit     int
 	Offset    int
-	Args      []interface{}
 }
 
 type UpdateParams struct {
-	Columns   []string
+	Args      []interface{}
 	TableName string
 	Where     string
 	OrderBy   string
+	Columns   []string
 	Limit     int
 	Offset    int
-	Args      []interface{}
 }
 
 type FieldData struct {
-	Key   string
 	Value interface{}
+	Key   string
 }
 
 // In this example, the repo struct embeds the repository.Repository interface directly.

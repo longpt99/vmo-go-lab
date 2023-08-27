@@ -11,7 +11,7 @@ type Service struct {
 }
 
 func (s *Service) HandlerGetUsers() (interface{}, error) {
-	var data, err = s.repo.List()
+	var data, err = s.repo.List(&repository.FindParams{})
 
 	if err != nil {
 		return nil, err
