@@ -57,12 +57,12 @@ func (e *CommonStatusEnum) Scan(value interface{}) error {
 	return nil
 }
 
-func (e CommonStatusEnum) Value() (driver.Value, error) {
-	return string(e), nil
+func (e *CommonStatusEnum) Value() (driver.Value, error) {
+	return string(*e), nil
 }
 
 type QueryStringParams struct {
-	OrderBy        string `form:"order_by" validate:"omitempty,alpha"`
+	OrderBy        string `form:"order_by" validate:"omitempty"`
 	OrderDirection string `form:"order_direction" validate:"omitempty,alpha"`
 	Page           int    `form:"page" validate:"omitempty,min=1"`
 	PageSize       int    `form:"page_size" validate:"omitempty,min=1,max=100"`

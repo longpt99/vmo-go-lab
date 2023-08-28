@@ -49,7 +49,11 @@ type User struct {
 	DeletedAt *gorm.DeletedAt         `json:"-" gorm:"column:deleted_at"`
 
 	//Relationship
-	Albums []*Album `gorm:"many2many:user_albums"`
+	// Albums []Album `json:"albums" gorm:"many2many:user_albums"`
+}
+
+func (*User) TableName() string {
+	return "users"
 }
 
 type UpdateUserProfileReq struct {

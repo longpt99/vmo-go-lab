@@ -64,7 +64,7 @@ func main() {
 		}
 	}()
 
-	// Wait for a signal to shutdown the server
+	// Wait for a signal to shut down the server
 	sig := <-signalCh
 	log.Printf("[Server] Received signal: %v\n", sig)
 

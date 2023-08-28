@@ -23,20 +23,22 @@ type Repository[T any] interface {
 }
 
 type QueryParams struct {
+	Args      []interface{}
 	TableName string
 	Where     string
 	OrderBy   string
 	Columns   []string
-	Args      []interface{}
 	Limit     int
 	Offset    int
 }
 
 type FindParams struct {
-	Where  string
-	Select []string
+	Args       []interface{}
+	Where      string
+	Select     []string
+	Joins      []string
+	JoinTables []string
 	models.QueryStringParams
-	Args []interface{}
 }
 
 type UpdateParams struct {
@@ -51,8 +53,8 @@ type UpdateParams struct {
 }
 
 type FieldData struct {
-	Key   string
 	Value interface{}
+	Key   string
 }
 
 type Pagination struct {
@@ -99,19 +101,34 @@ func (r *repo[T]) List(params *FindParams) (*ResponseData[T], error) {
 
 	queryBuilder := r.db.Model(&entity)
 
+	if len(params.Joins) > 0 {
+		for _, r := range params.Joins {
+			queryBuilder.Joins(r)
+		}
+	}
+
 	if params.Where != "" {
 		queryBuilder = queryBuilder.Where(params.Where, params.Args...)
+	}
+
+	_ = queryBuilder.Count(&totalItem)
+
+	if params.OrderBy != "" {
+		queryBuilder.Order(fmt.Sprintf("%s.%s %s", queryBuilder.Statement.Table, params.OrderBy, params.OrderDirection))
 	}
 
 	if len(params.Select) > 0 {
 		queryBuilder.Select(params.Select)
 	}
 
-	_ = queryBuilder.Count(&totalItem)
-	result := queryBuilder.Offset(offset * limit).Limit(limit).Find(&data)
+	//TODO: Join table and select field
+	// err := queryBuilder.Preload("Users", func(db *gorm.DB) *gorm.DB {
+	// 	return db.Select("id, name, email")
+	// }).Find(&data).Error
 
-	if result.Error != nil {
-		return nil, result.Error
+	err := queryBuilder.Find(&data).Error
+	if err != nil {
+		return nil, err
 	}
 
 	return &ResponseData[T]{
@@ -152,10 +169,10 @@ func (r *repo[T]) DetailByID(id string) (*T, error) {
 
 func (r *repo[T]) Delete(id string) error {
 	var entity T
-	result := r.db.Where("id = ?", id).Delete(&entity)
 
-	if result.Error != nil {
-		return result.Error
+	err := r.db.Where("id = ?", id).Delete(&entity).Error
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -163,10 +180,10 @@ func (r *repo[T]) Delete(id string) error {
 
 func (r *repo[T]) InsertOne(params *T) (*string, error) {
 	var id string
-	result := r.db.Create(params).Select("id").Scan(&id)
 
-	if result.Error != nil {
-		return nil, result.Error
+	err := r.db.Create(params).Select("id").Scan(&id).Error
+	if err != nil {
+		return nil, err
 	}
 
 	return &id, nil
@@ -192,12 +209,14 @@ func (r *repo[T]) InsertOne(params *T) (*string, error) {
 // }
 
 func (r *repo[T]) CountByConditions(params *QueryParams) (*int64, error) {
-	var count int64
-	var entity T
+	var (
+		count  int64
+		entity T
+	)
 
-	result := r.db.Model(&entity).Where(params.Where, params.Args...).Count(&count)
-	if result.Error != nil {
-		return nil, result.Error
+	err := r.db.Model(&entity).Where(params.Where, params.Args...).Count(&count).Error
+	if err != nil {
+		return nil, err
 	}
 
 	return &count, nil
@@ -205,20 +224,19 @@ func (r *repo[T]) CountByConditions(params *QueryParams) (*int64, error) {
 
 func (r *repo[T]) DetailByConditions(dest interface{}, params *QueryParams) error {
 	var entity T
-	result := r.db.Model(&entity).Where(params.Where, params.Args...).First(&dest)
 
-	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
-		return result.Error
+	err := r.db.Model(&entity).Where(params.Where, params.Args...).First(&dest).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
 	}
 
 	return nil
 }
 
 func (r *repo[T]) UpdateByConditions(params *UpdateParams) error {
-	result := r.db.Table(params.TableName).Where(params.Where, params.Args...).Updates(params.Data)
-
-	if result.Error != nil {
-		return result.Error
+	err := r.db.Table(params.TableName).Where(params.Where, params.Args...).Updates(params.Data).Error
+	if err != nil {
+		return err
 	}
 
 	return nil

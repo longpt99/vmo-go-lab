@@ -15,9 +15,12 @@ type Service struct {
 	userR user.Repository
 }
 
-func (s *Service) List(query mC.QueryStringParams) (interface{}, error) {
+func (s *Service) List(userID string, query mC.QueryStringParams) (interface{}, error) {
 	var data, err = s.repo.List(&repository.FindParams{
-		Select:            []string{"id", "name", "description", "status"},
+		Where:             "m2m.user_id = ?",
+		Args:              []interface{}{userID},
+		Select:            []string{"albums.id", "albums.name", "albums.description"},
+		Joins:             []string{"LEFT JOIN user_albums AS m2m ON m2m.album_id = albums.id", "LEFT JOIN users ON users.id = m2m.user_id"},
 		QueryStringParams: query,
 	})
 
@@ -55,10 +58,10 @@ func (s *Service) HandlerDeleteUser(id string) (interface{}, error) {
 }
 
 func (s *Service) create(userID string, body *CreateAlbumReq) (interface{}, error) {
-	var owner = &models.User{ID: userID}
+	var owner = models.User{ID: userID}
 
 	params := &models.Album{
-		Users:   []*models.User{owner},
+		Users:   []models.User{owner},
 		OwnerID: &userID,
 	}
 

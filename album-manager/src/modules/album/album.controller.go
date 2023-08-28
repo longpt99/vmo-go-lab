@@ -48,7 +48,13 @@ func (h *Controller) list(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.List(queryParams)
+	claims, err := t.GetPayload(c)
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
+
+	result, err := h.service.List(claims.ID, queryParams)
 
 	if err != nil {
 		res.WriteError(c, err)
