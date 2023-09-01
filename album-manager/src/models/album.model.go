@@ -18,7 +18,8 @@ type Album struct {
 	UpdatedAt   *time.Time               `json:"updated_at" gorm:"column:updated_at;default:CURRENT_TIMESTAMP"`
 	DeletedAt   *gorm.DeletedAt          `json:"-" gorm:"column:deleted_at"`
 
-	Users []User `json:"users" gorm:"many2many:user_albums;joinForeignKey:album_id"`
+	Users  []User  `json:"users" gorm:"many2many:user_albums"`
+	Photos []Photo `json:"photos" gorm:"foreignKey:Album"`
 }
 
 func (*Album) TableName() string {
