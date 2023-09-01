@@ -17,10 +17,17 @@ type Service struct {
 
 func (s *Service) List(userID string, query mC.QueryStringParams) (interface{}, error) {
 	var data, err = s.repo.List(&repository.FindParams{
-		Where:             "m2m.user_id = ?",
-		Args:              []interface{}{userID},
+		Where: `m2m.user_id = ? AND 
+			(
+				CASE
+					WHEN albums.status = ? THEN albums.owner_id = ?
+					ELSE true
+				END
+			)
+		`,
+		Args:              []interface{}{userID, mC.INACTIVE, userID},
 		Select:            []string{"albums.id", "albums.name", "albums.description"},
-		Joins:             []string{"LEFT JOIN user_albums AS m2m ON m2m.album_id = albums.id", "LEFT JOIN users ON users.id = m2m.user_id"},
+		Joins:             []string{"JOIN user_albums AS m2m ON m2m.album_id = albums.id", "JOIN users ON users.id = m2m.user_id"},
 		QueryStringParams: query,
 	})
 
@@ -78,6 +85,39 @@ func (s *Service) create(userID string, body *CreateAlbumReq) (interface{}, erro
 	return map[string]interface{}{
 		"id": id,
 	}, nil
+}
+
+func (s *Service) getByID(userID, id string) (interface{}, error) {
+	count, err := s.repo.CountByConditions(&repository.QueryParams{
+		Where: "m2m.user_id = ? AND id = ?",
+		Args:  []interface{}{userID, id},
+		Joins: []string{"LEFT JOIN user_albums AS m2m ON m2m.album_id = albums.id"},
+
+		// Where:             "m2m.user_id = ?",
+		// Args:              []interface{}{userID},
+		// Select:            []string{"albums.id", "albums.name", "albums.description"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if *count == 0 {
+		return nil, errors.E(errors.Op("getByID"), http.StatusBadRequest, "album not found")
+	}
+
+	result, err := s.repo.DetailByConditions(&repository.QueryParams{
+		Where: "id = ?",
+		Args:  []interface{}{id},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if *result.OwnerID != userID && *result.Status != mC.ACTIVE {
+		return nil, errors.E(errors.Op("getByID"), http.StatusBadRequest, "album not found")
+	}
+
+	return result, nil
 }
 
 func (s *Service) updateByID(userID, id string, body *UpdateAlbumReq) (interface{}, error) {

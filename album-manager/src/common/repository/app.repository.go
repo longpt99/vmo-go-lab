@@ -17,7 +17,7 @@ type Repository[T any] interface {
 	List(params *FindParams) (*ResponseData[T], error)
 	DetailByID(id string) (*T, error)
 	Delete(id string) error
-	DetailByConditions(dest interface{}, params *QueryParams) error
+	DetailByConditions(params *QueryParams) (*T, error)
 	UpdateByConditions(params *UpdateParams) error
 	CountByConditions(params *QueryParams) (*int64, error)
 }
@@ -28,16 +28,16 @@ type QueryParams struct {
 	Where     string
 	OrderBy   string
 	Columns   []string
+	Joins     []string
 	Limit     int
 	Offset    int
 }
 
 type FindParams struct {
-	Args       []interface{}
-	Where      string
-	Select     []string
-	Joins      []string
-	JoinTables []string
+	Args   []interface{}
+	Where  string
+	Select []string
+	Joins  []string
 	models.QueryStringParams
 }
 
@@ -115,6 +115,7 @@ func (r *repo[T]) List(params *FindParams) (*ResponseData[T], error) {
 
 	if params.OrderBy != "" {
 		queryBuilder.Order(fmt.Sprintf("%s.%s %s", queryBuilder.Statement.Table, params.OrderBy, params.OrderDirection))
+		params.Select = append(params.Select, fmt.Sprintf("%s.%s", queryBuilder.Statement.Table, params.OrderBy))
 	}
 
 	if len(params.Select) > 0 {
@@ -214,7 +215,15 @@ func (r *repo[T]) CountByConditions(params *QueryParams) (*int64, error) {
 		entity T
 	)
 
-	err := r.db.Model(&entity).Where(params.Where, params.Args...).Count(&count).Error
+	queryBuilder := r.db.Model(&entity)
+
+	if len(params.Joins) > 0 {
+		for _, r := range params.Joins {
+			queryBuilder.Joins(r)
+		}
+	}
+
+	err := queryBuilder.Where(params.Where, params.Args...).Count(&count).Error
 	if err != nil {
 		return nil, err
 	}
@@ -222,15 +231,23 @@ func (r *repo[T]) CountByConditions(params *QueryParams) (*int64, error) {
 	return &count, nil
 }
 
-func (r *repo[T]) DetailByConditions(dest interface{}, params *QueryParams) error {
+func (r *repo[T]) DetailByConditions(params *QueryParams) (*T, error) {
 	var entity T
 
-	err := r.db.Model(&entity).Where(params.Where, params.Args...).First(&dest).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+	queryBuilder := r.db.Model(&entity)
+
+	if len(params.Joins) > 0 {
+		for _, r := range params.Joins {
+			queryBuilder.Joins(r)
+		}
 	}
 
-	return nil
+	err := queryBuilder.Where(params.Where, params.Args...).First(&entity).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+
+	return &entity, nil
 }
 
 func (r *repo[T]) UpdateByConditions(params *UpdateParams) error {

@@ -63,12 +63,12 @@ func (s *Service) HandlerUpdateUser(body *models.CreateUserReq) interface{} {
 }
 
 func (s *Service) HandlerGetProfile(id string) (interface{}, error) {
-	var data struct {
-		ID       string `json:"id"`
-		Email    string `json:"email"`
-		Name     string `json:"name"`
-		Username string `json:"username"`
-	}
+	// var data struct {
+	// 	ID       string `json:"id"`
+	// 	Email    string `json:"email"`
+	// 	Name     string `json:"name"`
+	// 	Username string `json:"username"`
+	// }
 
 	params := &repository.QueryParams{
 		TableName: "users",
@@ -77,11 +77,12 @@ func (s *Service) HandlerGetProfile(id string) (interface{}, error) {
 		Args:      []interface{}{id},
 	}
 
-	if err := s.repo.DetailByConditions(&data, params); err != nil {
+	result, err := s.repo.DetailByConditions(params)
+	if err != nil {
 		return nil, err
 	}
 
-	return &data, nil
+	return &result, nil
 }
 
 func (s *Service) HandlerUpdateProfile(id string, body models.UpdateUserProfileReq) (interface{}, error) {

@@ -20,40 +20,40 @@ type Service struct {
 func (s *Service) handleSignIn(body *models.LoginUserReq) (interface{}, error) {
 	op := errors.Op("auth.service.handleSignIn")
 
-	var data struct {
-		ID       string `json:"id"`
-		Password string `json:"password"`
-	}
+	// var data struct {
+	// 	ID       string `json:"id"`
+	// 	Password string `json:"password"`
+	// }
 
 	params := &repository.QueryParams{
-		TableName: "users",
-		Columns:   []string{"id", "password"},
-		Where:     "email ILIKE ? OR username ILIKE ?",
-		Args:      []interface{}{body.Identifier, body.Identifier},
+		Columns: []string{"id", "password"},
+		Where:   "email ILIKE ? OR username ILIKE ?",
+		Args:    []interface{}{body.Identifier, body.Identifier},
 	}
 
-	if err := s.userRepo.DetailByConditions(&data, params); err != nil {
+	result, err := s.userRepo.DetailByConditions(params)
+	if err != nil {
 		return nil, err
 	}
 
-	if reflect.ValueOf(data).IsZero() {
+	if reflect.ValueOf(result).IsZero() {
 		return nil, errors.E(op, http.StatusBadRequest, "account not found")
 	}
 
-	match := utils.CompareHashPassword(body.Password, data.Password)
+	match := utils.CompareHashPassword(body.Password, result.Password)
 	if !match {
 		return nil, errors.E(op, http.StatusBadRequest, "wrong password!")
 	}
 
-	return map[string]string{"access_token": t.SignToken(data.ID)}, nil
+	return map[string]string{"access_token": t.SignToken(result.ID)}, nil
 }
 
 func (s *Service) handleSignUp(body *models.SignUpUserReq) (interface{}, error) {
 	op := errors.Op("auth.service.handleSignUp")
 
-	var data struct {
-		ID string `json:"id"`
-	}
+	// var data struct {
+	// 	ID string `json:"id"`
+	// }
 
 	params := &repository.QueryParams{
 		TableName: "users",
@@ -62,17 +62,18 @@ func (s *Service) handleSignUp(body *models.SignUpUserReq) (interface{}, error) 
 		Args:      []interface{}{body.Email},
 	}
 
-	if err := s.userRepo.DetailByConditions(&data, params); err != nil {
+	result, err := s.userRepo.DetailByConditions(params)
+	if err != nil {
 		return nil, err
 	}
 
-	if !reflect.ValueOf(data).IsZero() {
+	if !reflect.ValueOf(result).IsZero() {
 		return nil, errors.E(op, http.StatusBadRequest, "account have exists")
 	}
 
 	createUserParams := &models.User{}
 
-	err := object.MergeStructIntoModel(createUserParams, body)
+	err = object.MergeStructIntoModel(createUserParams, body)
 	if err != nil {
 		return nil, err
 	}
@@ -126,10 +127,10 @@ func (s *Service) handleResetPassword(body *models.ResetPasswordReq) (interface{
 func (s *Service) handleChangePassword(body *models.ChangePasswordReq, id string) (interface{}, error) {
 	op := errors.Op("auth.service.handleChangePassword")
 
-	var data struct {
-		ID       string `json:"id"`
-		Password string `json:"password"`
-	}
+	// var data struct {
+	// 	ID       string `json:"id"`
+	// 	Password string `json:"password"`
+	// }
 
 	params := &repository.QueryParams{
 		TableName: "users",
@@ -138,12 +139,12 @@ func (s *Service) handleChangePassword(body *models.ChangePasswordReq, id string
 		Args:      []interface{}{id},
 	}
 
-	err := s.userRepo.DetailByConditions(&data, params)
+	result, err := s.userRepo.DetailByConditions(params)
 	if err != nil {
 		return nil, err
 	}
 
-	match := utils.CompareHashPassword(body.OldPassword, data.Password)
+	match := utils.CompareHashPassword(body.OldPassword, result.Password)
 	if !match {
 		return nil, errors.E(op, http.StatusBadRequest, "old password not match")
 	}
@@ -164,6 +165,6 @@ func (s *Service) handleChangePassword(body *models.ChangePasswordReq, id string
 
 	//TODO Send new password to mail
 	return map[string]interface{}{
-		"data": data,
+		"data": result,
 	}, nil
 }

@@ -90,7 +90,13 @@ func (h *Controller) create(c *gin.Context) {
 }
 
 func (h *Controller) getByID(c *gin.Context) {
-	result, err := h.service.HandlerDeleteUser(c.Param("id"))
+	claims, err := t.GetPayload(c)
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
+
+	result, err := h.service.getByID(claims.ID, c.Param("id"))
 
 	if err != nil {
 		res.WriteError(c, err)
