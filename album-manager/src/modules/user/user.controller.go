@@ -2,7 +2,6 @@ package user
 
 import (
 	"album-manager/src/middleware"
-	"album-manager/src/models"
 	res "album-manager/src/utils/response"
 	t "album-manager/src/utils/token"
 	"album-manager/src/utils/validate"
@@ -85,7 +84,7 @@ func (h *Controller) handleGetProfile(c *gin.Context) {
 }
 
 func (h *Controller) handleUpdateProfile(c *gin.Context) {
-	var body models.UpdateUserProfileReq
+	var body UpdateUserProfileReq
 
 	if err := validate.ReadValid(&body, c); err != nil {
 		res.WriteError(c, err)

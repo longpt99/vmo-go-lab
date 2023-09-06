@@ -27,6 +27,7 @@ func InitController(r *gin.RouterGroup, userRepo user.Repository) *Controller {
 
 	authR := r.Group("/auth")
 	{
+		authR.POST("/active-account", h.handleActiveAccount)
 		authR.POST("/sign-in", h.handleSignIn)
 		authR.POST("/sign-up", h.handleSignUp)
 		authR.POST("/reset-password", h.handleResetPassword)
@@ -34,6 +35,26 @@ func InitController(r *gin.RouterGroup, userRepo user.Repository) *Controller {
 	}
 
 	return h
+}
+
+func (h *Controller) handleActiveAccount(c *gin.Context) {
+	op := errors.Op("auth.controller.handleActiveAccount")
+
+	var body models.ActiveAccountReq
+
+	if err := validate.ReadValid(&body, c); err != nil {
+		res.WriteError(c, errors.E(op, err))
+		return
+	}
+
+	result, err := h.service.handleActiveAccount(&body)
+
+	if err != nil {
+		res.WriteError(c, err)
+		return
+	}
+
+	res.Write(c, result, http.StatusOK)
 }
 
 func (h *Controller) handleSignIn(c *gin.Context) {

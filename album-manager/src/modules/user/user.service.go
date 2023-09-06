@@ -85,7 +85,7 @@ func (s *Service) HandlerGetProfile(id string) (interface{}, error) {
 	return &result, nil
 }
 
-func (s *Service) HandlerUpdateProfile(id string, body models.UpdateUserProfileReq) (interface{}, error) {
+func (s *Service) HandlerUpdateProfile(id string, body UpdateUserProfileReq) (interface{}, error) {
 	params := &repository.UpdateParams{
 		TableName: "users",
 		Where:     "id = ?",

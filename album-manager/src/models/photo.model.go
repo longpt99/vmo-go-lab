@@ -15,3 +15,7 @@ type Photo struct {
 
 	Album Album `json:"album_id" gorm:"column:album_id;not null"`
 }
+
+func (*Photo) TableName() string {
+	return "photos"
+}

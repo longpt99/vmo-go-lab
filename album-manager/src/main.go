@@ -16,6 +16,14 @@ import (
 	"time"
 )
 
+var (
+	CtxTimeOut        = 10 * time.Second
+	ReadHeaderTimeout = 1 * time.Second
+	ReadTimeout       = 1 * time.Second
+	WriteTimeout      = 15 * time.Second
+	IdleTimeout       = 15 * time.Second
+)
+
 func main() {
 	err := configs.InitConfig()
 	if err != nil {
@@ -27,17 +35,31 @@ func main() {
 		log.Fatalf("RegisterValidation error occurred. Err: %s", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), CtxTimeOut)
 	defer cancel()
 
 	// Load database
 	store, err := database.InitDatabase(ctx)
 	if err != nil {
 		log.Printf("InitDatabase error occurred. Err: %s", err)
-	} else {
-		store.InitializeFunction()
+		return
 	}
+
+	log.Printf("Init Postgres Successfully! 🚀")
+	store.InitializeFunction()
+
 	defer store.Close()
+
+	// Load redis
+	rd := database.InitRedis(ctx)
+	if err = rd.Ping(); err != nil {
+		log.Printf("InitRedisDatabase error occurred. Err: %s", err)
+		return
+	}
+
+	log.Printf("Init RedisDatabase Successfully! 🚀")
+
+	defer rd.Close()
 
 	repo := repository.InitRepositories(store)
 	p := configs.Env.Port
@@ -45,10 +67,10 @@ func main() {
 	s := &http.Server{
 		Addr:              fmt.Sprintf(":%d", p),
 		Handler:           r,
-		ReadHeaderTimeout: 1 * time.Second,
-		ReadTimeout:       1 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       15 * time.Second,
+		ReadHeaderTimeout: ReadHeaderTimeout,
+		ReadTimeout:       ReadTimeout,
+		WriteTimeout:      WriteTimeout,
+		IdleTimeout:       IdleTimeout,
 	}
 
 	// Create a channel to receive signals
