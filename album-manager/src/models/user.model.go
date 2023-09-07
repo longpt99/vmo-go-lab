@@ -23,7 +23,7 @@ type SignUpUserReq struct {
 	Name     string `json:"name" validate:"required"`
 }
 
-type ResetPasswordReq struct {
+type ForgotPasswordReq struct {
 	Identifier string `json:"identifier" validate:"required"`
 }
 

@@ -30,7 +30,7 @@ func InitController(r *gin.RouterGroup, userRepo user.Repository) *Controller {
 		authR.POST("/active-account", h.handleActiveAccount)
 		authR.POST("/sign-in", h.handleSignIn)
 		authR.POST("/sign-up", h.handleSignUp)
-		authR.POST("/reset-password", h.handleResetPassword)
+		authR.POST("/forgot-password", h.handleForgotPassword)
 		authR.POST("/change-password", middleware.AuthMiddleware, h.handleChangePassword)
 	}
 
@@ -97,24 +97,24 @@ func (h *Controller) handleSignUp(c *gin.Context) {
 	res.Write(c, result, http.StatusOK)
 }
 
-func (h *Controller) handleResetPassword(c *gin.Context) {
+func (h *Controller) handleForgotPassword(c *gin.Context) {
 	op := errors.Op("auth.controller.handleSignUp")
 
-	var body models.ResetPasswordReq
+	var body models.ForgotPasswordReq
 
-	if err := validate.ReadValid(&body, c); err != nil {
+	err := validate.ReadValid(&body, c)
+	if err != nil {
 		res.WriteError(c, errors.E(op, err))
 		return
 	}
 
-	result, err := h.service.handleResetPassword(&body)
-
+	err = h.service.handleForgotPassword(&body)
 	if err != nil {
 		res.WriteError(c, err)
 		return
 	}
 
-	res.Write(c, result, http.StatusOK)
+	res.Write(c, nil, http.StatusOK)
 }
 
 func (h *Controller) handleChangePassword(c *gin.Context) {

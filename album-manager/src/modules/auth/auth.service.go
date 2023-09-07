@@ -150,42 +150,65 @@ func (s *Service) handleSignUp(body *models.SignUpUserReq) (interface{}, error) 
 		return nil, err
 	}
 
-	// TODO: Send link to active account
-	// notiService := notification.Service{
-	// 	Notifier: notification.CreateNotifier("email"),
-	// }
-	// notiService.SendNotification("OTP: ", []string{
-	// 	body.Email,
-	// })
+	OTP := strings.RandomNumStr(6)
+	notiService := notification.Service{
+		Notifier: notification.CreateNotifier("email"),
+	}
+
+	go notiService.SendNotification(fmt.Sprintf("Your OTP code is %s", OTP), []string{
+		body.Email,
+	})
+
+	database.RedisClient.SetEx(context.Background(), fmt.Sprintf("caches:users:%s:active_account", id), OTP, time.Minute*5)
 
 	return map[string]interface{}{
 		"id": id,
 	}, nil
 }
 
-func (s *Service) handleResetPassword(body *models.ResetPasswordReq) (interface{}, error) {
-	op := errors.Op("auth.service.handleSignUp")
+func (s *Service) handleForgotPassword(body *models.ForgotPasswordReq) error {
+	op := errors.Op("auth.service.handleForgotPassword")
 
 	params := &repository.QueryParams{
-		TableName: "users",
-		Columns:   []string{"id"},
-		Where:     "email ILIKE ? OR username ILIKE ?",
-		Args:      []interface{}{body.Identifier, body.Identifier},
+		Columns: []string{"id", "email"},
+		Where:   "email ILIKE ? OR username ILIKE ?",
+		Args:    []interface{}{body.Identifier, body.Identifier},
 	}
 
-	count, err := s.userRepo.CountByConditions(params)
+	doc, err := s.userRepo.DetailByConditions(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if *count == 0 {
-		return nil, errors.E(op, http.StatusBadRequest, "account is not exists")
+	if doc == nil {
+		return errors.E(op, http.StatusBadRequest, "account is not exists")
 	}
 
-	//TODO Send new password to mail
-	return map[string]bool{
-		"isSucceed": true,
-	}, nil
+	newPw := strings.GenerateString(8)
+	updateParams := &repository.UpdateParams{
+		TableName: "users",
+		Where:     "id = ?",
+		Args:      []interface{}{doc.ID},
+		Data: map[string]interface{}{
+			"password": utils.HashPassword(newPw),
+		},
+	}
+
+	err = s.userRepo.UpdateByConditions(updateParams)
+	if err != nil {
+		return err
+	}
+
+	//Send new password to mail
+	notiService := notification.Service{
+		Notifier: notification.CreateNotifier("email"),
+	}
+
+	go notiService.SendNotification(fmt.Sprintf("Your New Password is %s", newPw), []string{
+		doc.Email,
+	})
+
+	return nil
 }
 
 func (s *Service) handleChangePassword(body *models.ChangePasswordReq, id string) (interface{}, error) {
